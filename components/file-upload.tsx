@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { UploadCloud, X, FileIcon, AlertCircle, Loader2 } from "lucide-react";
+import {
+  UploadCloud,
+  X,
+  FileIcon,
+  AlertCircle,
+  Loader2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
 import { cn } from "@/lib/utils";
@@ -29,11 +37,12 @@ interface FileUploadProps {
 }
 
 export function FileUpload({
-  maxFiles = 5,
-  maxSize = 5 * 1024 * 1024, // 5MB
+  maxFiles = 1,
+  maxSize = 1 * 1024 * 1024, // 5MB
   accept = {
     "image/*": [".jpeg", ".jpg", ".png", ".gif"],
     "application/pdf": [".pdf"],
+    "application/msword": [".doc", ".docx"],
   },
   className,
   disabled = false,
@@ -41,6 +50,7 @@ export function FileUpload({
 }: FileUploadProps) {
   const [aiResult, setAiResult] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [isCopied, setIsCopied] = React.useState<boolean>(false);
   const [files, setFiles] = React.useState<File[]>([]);
   const [prompt, setPrompt] = React.useState<string>("");
   const [error, setError] = React.useState<string | null>(null);
@@ -49,7 +59,10 @@ export function FileUpload({
   >({});
 
   const onDrop = React.useCallback(
-    (acceptedFiles: File[], rejectedFiles: any[]) => {
+    (
+      acceptedFiles: File[],
+      rejectedFiles: import("react-dropzone").FileRejection[]
+    ) => {
       setError(null);
 
       if (rejectedFiles.length > 0) {
@@ -138,25 +151,58 @@ export function FileUpload({
     disabled,
     maxFiles,
   });
-
+  
   const onSubmit = async () => {
     setIsLoading(true);
 
     const result = await getAiResult(prompt, files[0]);
     setAiResult(result);
 
+    setPrompt(""); // Clear prompt after submission
+
     setIsLoading(false);
+  };
+
+  const copyToClipboard = async () => {
+    if (aiResult) {
+      try {
+        await navigator.clipboard.writeText(aiResult);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+      }
+    }
   };
 
   return (
     <div className="flex flex-col gap-5">
+      {" "}
       {aiResult && (
         <div className="flex flex-col items-center gap-2">
-          <p className="text-sm text-muted-foreground">{aiResult}</p>
-          <Button onClick={() => setAiResult(null)}>Close</Button>
+          <Textarea readOnly value={aiResult} />
+          <div className="flex gap-2">
+            <Button
+              onClick={copyToClipboard}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy Text
+                </>
+              )}
+            </Button>
+            <Button onClick={() => setAiResult(null)}>Close</Button>
+          </div>
         </div>
       )}
-
       {!aiResult && (
         <>
           <Textarea
